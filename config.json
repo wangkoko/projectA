@@ -1,0 +1,17 @@
+[
+    {
+      "lang" : "chi_tra",
+      "patterns": {
+        "校正日期": "校正日期\\s*:\\s*(\\S+)",
+        "報告編號": "報告編號\\s*:\\s*(\\S+)",
+        "Serial Number": "Serial Num*.ber\\s*[:：]?\\s*(\\w+)",
+        "送校單位": "送校單位\\s*:\\s*(.+)"
+      }
+    },
+    {
+      "lang" : "eng",
+      "patterns": {
+        "Serial Number": "Serial Number\\s*[:：]?\\s*(\\d+)"
+      }
+    }
+  ]

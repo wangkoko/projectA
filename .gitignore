@@ -1,3 +1,7 @@
+projectB-ai.code-workspace
+.DS_Store
+test_data/
+venv-dev/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

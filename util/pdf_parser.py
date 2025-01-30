@@ -4,13 +4,15 @@ import io
 from PIL import Image
 import json
 import re
+import os
 import logging
+import shutil
 
 # 設定日誌檔案名稱和目錄
 #LOG_FILE = 'pdf_parser.log'
 
 # 設定日誌等級
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # 建立一個記錄器
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ class PDFParser:
         self.pdf_text = ""
         self.lang = ""
         self.file_name = ""
+        self.file_path = ""
         self.data = {}
     @property
     def get_text(self):
@@ -57,7 +60,8 @@ class PDFParser:
 
     def extract_images_and_perform_ocr(self, pdf_path, lang = 'chi_tra'):
         self.lang = lang
-        self.file_name = pdf_path
+        self.file_name = os.path.basename(pdf_path)
+        self.file_path = os.path.dirname(pdf_path)
         with open(pdf_path, 'rb') as pdf_file_obj:
             pdf_reader = PyPDF2.PdfReader(pdf_file_obj)
 
@@ -123,6 +127,35 @@ class PDFParser:
         logger.debug(self.data)
         return self.data
 
+    def set_data(self, key, data):
+        if self.data.get(key):
+            logger.info(f'key ({key}) existed - overwrite ({self.data.get(key)})')
+        self.data[key] = data
+
+    def save_to(self, path, name) -> str:
+        '''
+        save pdf from
+        self.file_path = os.path.dirname(pdf_path)
+        to
+        path with name.pdf
+        '''
+        archive_path = os.path.join(path, f"{name}.pdf")
+        src_path = os.path.join(self.file_path, self.file_name)
+        logger.info(f'archive file ({src_path}) to ({archive_path})')
+        if os.path.exists(archive_path):
+            return f"\t歸檔 PDF 已存在!! 請確認是否已歸過檔\n\t{src_path}\n\t 存在檔案 {archive_path}\n"
+        shutil.copy2(src_path, archive_path)  
+        return f"\tPDF 已歸檔\n\t 將 {src_path}\n\t歸檔至 {archive_path}\n"
+        # try:
+        #     with open(self.file_path, 'wb') as f:
+        #         f.write(archive_path)  # Assuming self.pdf_data contains the PDF content
+        #         return f"PDF saved to {archive_path}/{name}"
+        # except Exception as e:
+        #     return f"Error saving PDF: {e}"
+
+    def get_data(self, key):
+        return self.data.get(key)
+
     def get_config(self):
         return self.config 
 
@@ -137,9 +170,9 @@ if __name__ == "__main__":
         lang = patt.get("lang")
         print(f"pattern entry {lang}")
         
-    pdf_file = "./test_data/20241204082535676.pdf" 
+    # pdf_file = "./test_data/20241204082535676.pdf" 
     # pdf_file = "./test_data/20241127081629635.pdf" 
-    # pdf_file = "./test_data/20241217083105429.pdf"
+    pdf_file = "./test_data/20241217083105429.pdf"
     parser.extract_images_and_perform_ocr(pdf_file)
 
     print("Text extracted from PDF:")

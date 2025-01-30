@@ -1,0 +1,14 @@
+{
+    "arch_db" : "/Users/winnieshih/文件/github/dev/projectA-asys/projectA/test_data/14100 工作記錄表.xlsx",
+    "folder_db" : "/Users/winnieshih/文件/github/dev/projectA-asys/projectA/archive_root",
+    "arch_files_path" : "/Users/winnieshih/文件/github/dev/projectA-asys/projectA/test_data",
+    "map_dict" : {
+        "SN_NUM" : "SN",
+        "REPORT_ID_ARCH" : "專案代號",
+        "D_DATE" : "校正日",
+        "DONE_DATE" : "校正完成日",
+        "USER" : "USER",
+        "P_USER" : "電話",
+        "E_USER" : "E-mail"
+    }
+  }

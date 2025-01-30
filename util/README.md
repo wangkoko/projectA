@@ -105,3 +105,77 @@ Example:
 
 * `請將 "PdfParserConfig" 和 "PdfImageProcessor" 的方法整合到一個新的類別中，並將其命名為 "PdfProcessor"`
 * `新類別 PdfProcessor 需要具備 "extract_text_from_pdf"、"extract_images_and_perform_ocr" 這兩個方法`
+
+### RecordStore Class介紹
+#### 使用說明
+
+*   `RecordStore` class 是一個用於管理根目錄下的子目錄的類別。
+*   它會在指定的根目錄下找到葉子目錄，並將其相對路徑儲存在列表中。
+
+### Methods和Attributes介紹
+#### get_leaf_folders
+取得根目錄下所有葉子目錄的相對路徑列表。
+
+#### find_path_by_name
+根據傳入的名稱查找相應的葉子目錄，若找到則回傳該葉子目錄的路徑。
+
+#### absolute_root_path
+返回根目錄的絕對路徑。
+
+### Usage範例
+
+```python
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root', default='.')
+    args = parser.parse_args()
+
+    record_store = RecordStore(args.root)
+
+    # 取得子目錄列表
+    leaf_folders = record_store.get_leaf_folders()
+    for folder, path in leaf_folders:
+        print(f'{folder}: {path}')
+
+    # 查找特定名子的子目錄
+    name = 'my_folder'
+    path = record_store.find_path_by_name(name)
+    if path is not None:
+        print(f'找到 "{name}" 的子目錄: {path}')
+    else:
+        print(f'未找到 "{name}" 的子目錄')
+
+    # 取得根目錄的絕對路徑
+    absolute_root = record_store.absolute_root_path
+    print(f'根目錄的絕對路徑: {absolute_root}')
+
+### 說明
+
+RecordStore class 中的 _find_leaf_folders 方法會遍歷 root 目錄下的所有子目錄，找出葉子目錄（不含子目錄的目錄），並儲存在 leaf_folders 列表中。
+ 
+get_leaf_folders 方法返回 leaf_folders 列表中的資料。
+ 
+find_path_by_name 方法會根據傳入的 name 查找相應的葉子目錄，若找到則回傳該葉子目錄的路徑。
+ 
+absolute_root_path 屬性返回根目錄的絕對路徑。
+
+# ExcelDictReader
+=====================
+pip install pandas python-docx
+
+## 使用說明
+
+參數：
+* `excel_path`: Excel檔案的路徑
+* `key`: 欲查詢的字典鍵
+
+方法：
+* `load_data()`: 讀取Excel檔案並轉換成字典
+* `search_dict(key_value)`: 依據指定的鍵值查詢字典
+
+範例使用：
+```python
+reader = ExcelDictReader('example.xlsx')
+reader.load_data()
+result = reader.search_dict('最終訂單編號', '2205-20200102007')
+print(result)

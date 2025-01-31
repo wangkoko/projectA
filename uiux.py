@@ -214,16 +214,23 @@ class FileArchiveAgent:
         parsed_files_str += self.show_man_archived_pdf_info()
         yield parsed_files_str
 
+def toggle_show(show):
+    return gr.update(visible=not show), not show
+
 def create_app():
+
     archiveAgent = FileArchiveAgent()
     with gr.Blocks() as ui:
         gr.Markdown('### A simple interface for file archive')
-        with gr.Row():
+
+        show_block_db = gr.State(False)  # 存儲顯示狀態
+        show = gr.Button("-")
+        with gr.Row(visible=False) as block_db:
             folder_db_path = gr.Textbox(label="歸檔路徑根目錄 (folder_db)", value=archiveAgent.folder_db_path, placeholder=archiveAgent.folder_db_path)
-            load_folder_db = gr.Button("讀取歸檔路徑")
-        with gr.Row():
             arch_db_path = gr.Textbox(label="工作紀錄表路徑 (arch_db)", value=archiveAgent.arch_db_path, placeholder=archiveAgent.arch_db_path)
-            load_arch_db = gr.Button("讀取工作紀錄表路徑")
+            with gr.Column():
+                load_folder_db = gr.Button("讀取歸檔路徑")
+                load_arch_db = gr.Button("讀取工作紀錄表路徑")
         with gr.Row():
             fils_to_arch_path = gr.Textbox(label="需歸檔 PDFs 路徑", value=archiveAgent.wait_archive_path, placeholder=archiveAgent.wait_archive_path)
             with gr.Column():
@@ -234,6 +241,7 @@ def create_app():
         with gr.Row():
             run_status = gr.TextArea(label="執行狀態", interactive=True)
 
+        show.click(toggle_show, show_block_db, [block_db, show_block_db])
         load_arch_db.click(archiveAgent.set_archive_db, inputs=[arch_db_path], outputs=[run_status])
         load_folder_db.click(archiveAgent.set_folder_db, inputs=[folder_db_path], outputs=[run_status])
         process_files.click(

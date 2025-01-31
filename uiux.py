@@ -34,11 +34,12 @@ class FileArchiveAgent:
             "CUSTOMER" : "客戶",
             "P_USER" : "電話",
             "E_USER" : "E-mail",
-            "ARCHIVE_TO" : "ARCHIVE_TO"
+            "ARCHIVE_TO" : "ARCHIVE_TO",
+            "NEW_ARCHIVE" : "NEW_ARCHIVE"
         }
 
         if archive_config is not None and os.path.exists(archive_config):
-            with open(archive_config, 'r') as  f:
+            with open(archive_config, 'r', encoding='utf-8') as  f:
                 self.archive_config = json.load(f)
         
         if self.archive_config is not None and self.archive_config.get('arch_db'):
@@ -61,8 +62,8 @@ class FileArchiveAgent:
         self.folder_db : RecordStore = None
 
     def able_to_archive(self, pdf : PDFParser) -> bool:
-        if pdf.get_data(self.map_dict.get("ARCHIVE_TO")):
-            logger.info(f'able to archive to {pdf.get_data(self.map_dict.get("ARCHIVE_TO"))}')
+        if pdf.get_data(self.map_dict.get("ARCHIVE_TO")) or pdf.get_data(self.map_dict.get("NEW_ARCHIVE")):
+            logger.info(f'able to archive to {pdf.get_data(self.map_dict.get("ARCHIVE_TO"))} or self.map_dict.get("NEW_ARCHIVE")')
             return True
         return False
 
@@ -106,46 +107,71 @@ class FileArchiveAgent:
         return f"\t尋找工作紀錄表: ({key}, {value} : {CUSTOMER} {REPORT_ID_ARCH})\n"
 
     def _search_info_in_folder(self, pdf : PDFParser) -> str:
+        path = None
+        ret_str = ''
         if self.folder_db is None:
             return 'please load folder database'
-        path = self.folder_db.traverse_directory(pdf.get_data(self.map_dict.get('REPORT_ID_ARCH')))
+        path_company = self.folder_db.traverse_directory(pdf.get_data(self.map_dict.get('CUSTOMER')))
+
+        ret_str = f"\t尋找歸檔路徑 : {pdf.get_data(self.map_dict.get('CUSTOMER'))} :"
+
+        if path_company is not None:
+            path = self.folder_db.traverse_directory(pdf.get_data(self.map_dict.get('SN_NUM')), root_folder=path_company)
+        else:
+            ret_str += f"\n\t\t無公司相關歸檔路徑 {pdf.get_data(self.map_dict.get('CUSTOMER'))}"
 
         if path is not None:
-            pdf.set_data("ARCHIVE_TO", path)
-        return f"\t尋找歸檔路徑 : {pdf.get_data(self.map_dict.get('REPORT_ID_ARCH'))} : {path}\n"
+            pdf.set_data(self.map_dict.get("ARCHIVE_TO"), path)
+            ret_str += f"\n\t\t找到歸檔路徑 {path}"
+
+        if path_company is not None and path is None:
+            path = os.path.join(path_company, pdf.get_data(self.map_dict.get('SN_NUM')))
+            pdf.set_data(self.map_dict.get("NEW_ARCHIVE"), path)
+            ret_str += f"\n\t\t需新增歸檔路徑 {path}"
+
+        return ret_str + "\n"
 
     def archive_pdf(self) -> str:
         parsed_files_str = ''
+
         for entry in self.fileToArchive:
-            parsed_files_str += (f'歸檔 : pdf({entry.file_name} \n'
-                f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
-                f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
-                f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n'
-                f'\t 歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n')
-            parsed_files_str += entry.save_to(entry.get_data(self.map_dict.get("ARCHIVE_TO")), entry.get_data(self.map_dict.get("REPORT_ID_ARCH")))
+            save_to = entry.get_data(self.map_dict.get("ARCHIVE_TO"))
+            if save_to is None:
+                save_to = entry.get_data(self.map_dict.get("NEW_ARCHIVE"))
+            parsed_files_str +=  self._show_pdf_info(entry)
+            parsed_files_str += entry.save_to(save_to, entry.get_data(self.map_dict.get("REPORT_ID_ARCH")))
             yield parsed_files_str
         parsed_files_str += f'歸檔完畢 ({len(self.fileToArchive)})'
-        yield parsed_files_str
+        return parsed_files_str
 
-    def show_archived_pdf_info(self):
-        parsed_files_str = ''
-        for entry in self.fileToArchive:
-            parsed_files_str += (f'檔名 : pdf({entry.file_name} \n'
-                f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
-                f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
-                f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n'
-                f'\t 歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n')
-        yield parsed_files_str
+    def _show_pdf_info(self, entry : PDFParser) -> str:
+        parsed_files_str = (f'檔名 : pdf({entry.file_name} \n'
+            f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
+            f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
+            f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n')
+        if entry.get_data(self.map_dict.get("ARCHIVE_TO")):
+            parsed_files_str += f'\t 可歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n'
+        elif entry.get_data(self.map_dict.get("NEW_ARCHIVE")):
+            parsed_files_str += f'\t 需新增歸檔至\t: {entry.get_data(self.map_dict.get("NEW_ARCHIVE"))} \n'
+        else:
+            parsed_files_str += f'\t 找不到客戶相關路徑 ({entry.get_data(self.map_dict.get("CUSTOMER"))}) \n'
+        return parsed_files_str
 
-    def show_man_archived_pdf_info(self):
+    def _show_pdfs_info(self, f_list : [PDFParser]) -> str:
         parsed_files_str = ''
-        for entry in self.not_archived_files:
-            parsed_files_str += (f'檔名 : pdf({entry.file_name} \n'
-                f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
-                f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
-                f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n'
-                f'\t 歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n')
-        yield parsed_files_str
+        for entry in f_list:
+            parsed_files_str += self._show_pdf_info(entry)
+        return parsed_files_str
+
+    def show_archived_pdf_info(self) -> str:
+        parsed_files_str = '可歸檔\n'
+        parsed_files_str += self._show_pdfs_info(self.fileToArchive)
+        return parsed_files_str
+
+    def show_man_archived_pdf_info(self) -> str:
+        parsed_files_str = '需手動歸檔\n'
+        parsed_files_str += self._show_pdfs_info(self.not_archived_files)
+        return parsed_files_str
 
     def extract_pdf(self, folder_path : str) -> str:
         self.not_archived_files = []
@@ -183,21 +209,10 @@ class FileArchiveAgent:
                         self.not_archived_files.append(parser)
                     yield parsed_files_str
         parsed_files_str += '總結:\n'
-        for entry in self.fileToArchive:
-            parsed_files_str += (f'可歸檔 : pdf({entry.file_name} \n'
-                f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
-                f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
-                f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n'
-                f'\t 歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n')
-            yield parsed_files_str
-        
-        for entry in self.not_archived_files:
-            parsed_files_str += (f'需手動歸檔 : pdf({entry.file_name} \n'
-                f'\t 客戶\t: {entry.get_data(self.map_dict.get("CUSTOMER"))} \n'
-                f'\t 專案代碼\t: {entry.get_data(self.map_dict.get("REPORT_ID_ARCH"))} \n'
-                f'\t 編號\t: {entry.get_data(self.map_dict.get("SN_NUM"))} \n'
-                f'\t 歸檔至\t: {entry.get_data(self.map_dict.get("ARCHIVE_TO"))} \n')
-            yield parsed_files_str
+        parsed_files_str += self.show_archived_pdf_info()
+        yield parsed_files_str
+        parsed_files_str += self.show_man_archived_pdf_info()
+        yield parsed_files_str
 
 def create_app():
     archiveAgent = FileArchiveAgent()
@@ -213,9 +228,9 @@ def create_app():
             fils_to_arch_path = gr.Textbox(label="需歸檔 PDFs 路徑", value=archiveAgent.wait_archive_path, placeholder=archiveAgent.wait_archive_path)
             with gr.Column():
                 process_files = gr.Button("確認是否可歸檔")
-                archive_files = gr.Button("歸檔")
-                archived_files_info = gr.Button("歸檔資訊")
+                archived_files_info = gr.Button("自動歸檔資訊")
                 man_archive_files_info = gr.Button("手動歸檔資訊")
+                archive_files = gr.Button("歸檔")
         with gr.Row():
             run_status = gr.TextArea(label="執行狀態", interactive=True)
 

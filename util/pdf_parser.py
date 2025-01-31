@@ -26,7 +26,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 class PDFParser:
     def __init__(self, config_file="config.json"):
         # Load configuration from JSON file
-        with open(config_file, 'r') as f:
+        with open(config_file, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
         # Initialize text variables
         self.pdf_text = ""
@@ -132,7 +132,7 @@ class PDFParser:
             logger.info(f'key ({key}) existed - overwrite ({self.data.get(key)})')
         self.data[key] = data
 
-    def save_to(self, path, name) -> str:
+    def save_to(self, path : str, name : str) -> str:
         '''
         save pdf from
         self.file_path = os.path.dirname(pdf_path)
@@ -140,6 +140,7 @@ class PDFParser:
         path with name.pdf
         '''
         archive_path = os.path.join(path, f"{name}.pdf")
+        os.makedirs(os.path.dirname(archive_path), exist_ok=True)
         src_path = os.path.join(self.file_path, self.file_name)
         logger.info(f'archive file ({src_path}) to ({archive_path})')
         if os.path.exists(archive_path):

@@ -25,7 +25,10 @@ class RecordStore:
     def get_leaf_folders(self):
         return self.leaf_folders
 
-    def traverse_directory(self, name):
+    def traverse_directory(self, name, root_folder=None):
+        if root_folder is None:
+            root_folder = self.root
+
         for dirpath, dirnames, filenames in os.walk(self.root):
             RecordStore.logger.info(f'try to find ({name}) in folder ({dirpath}/{dirnames})')
             print(f'try to find ({name}) in folder ({dirnames})')
